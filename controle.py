@@ -1,189 +1,139 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sqlite3
+import os
+
+# Configuração do caminho do banco de dados
+DB_PATH = os.path.join(os.path.expanduser('~'), 'Desktop/management/site/pages/vendas.db')
 
 # Função para criar o banco de dados e a tabela de vendas
 def create_vendas_db():
-    db_path = 'C:/Users/ld388/Desktop/management/site/pages/vendas.db'
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS vendas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome_produto TEXT NOT NULL,
-        quantidade INTEGER NOT NULL,
-        total REAL NOT NULL,
-        forma_pagamento TEXT NOT NULL,
-        data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        status TEXT DEFAULT 'Em Preparo'
-    )
-    ''')
-
-    conn.commit()
-    conn.close()
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS vendas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome_produto TEXT NOT NULL,
+                quantidade INTEGER NOT NULL,
+                total REAL NOT NULL,
+                forma_pagamento TEXT NOT NULL,
+                data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'Em Preparo'
+            )
+        ''')
 
 class ControleVendasApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Controle de Vendas")
-        
-        # Define a janela para tamanho normal
-        self.root.geometry("1200x600")  # Define o tamanho inicial da janela
-        self.root.resizable(True, True)  # Permite redimensionar a janela
+        self.root.geometry("1200x600")
+        self.root.resizable(True, True)
 
-        # Menu para minimizar ou restaurar a janela
-        menu_bar = tk.Menu(root)
-        root.config(menu=menu_bar)
-        janela_menu = tk.Menu(menu_bar, tearoff=0)
-        menu_bar.add_cascade(label="Janela", menu=janela_menu)
-        janela_menu.add_command(label="Minimizar", command=lambda: self.root.iconify())
-
-        # Estilo
+        # Configuração do estilo
         style = ttk.Style()
-        style.configure('TLabel', font=('Arial', 12))
-        style.configure('TButton', font=('Arial', 12))
-        style.configure('TEntry', font=('Arial', 12))
+        style.theme_use('clam')
+        style.configure('TFrame', background='#ECF0F1')
+        style.configure('TLabel', background='#ECF0F1', font=('Helvetica', 12))
+        style.configure('TButton', background='#2C3E50', foreground='white', font=('Helvetica', 12), padding=5)
+        style.map('TButton', background=[('active', '#1ABC9C')])
 
-        # Frame para lista de vendas - Em Preparo
-        self.frame_list_preparo = ttk.Frame(root, padding="10")
-        self.frame_list_preparo.grid(row=0, column=0, sticky="nsew")
+        # Título
+        self.label_title = ttk.Label(self.root, text="Controle de Vendas", font=('Helvetica', 18, 'bold'), anchor='center')
+        self.label_title.pack(pady=10)
 
-        self.label_list_preparo = ttk.Label(self.frame_list_preparo, text="Em Preparo", font=('Arial', 14))
-        self.label_list_preparo.grid(row=0, column=0, columnspan=2, pady=5)
+        # Configuração dos frames principais
+        self.frame_main = ttk.Frame(self.root, padding="10")
+        self.frame_main.pack(fill=tk.BOTH, expand=True)
 
-        self.listbox_preparo = tk.Listbox(self.frame_list_preparo, width=60, height=20, border=1, selectmode=tk.SINGLE)
-        self.listbox_preparo.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+        # Configuração dos frames para as listas
+        self.frames = {
+            "Em Preparo": self.create_list_frame("Em Preparo"),
+            "Em Entrega": self.create_list_frame("Em Entrega"),
+            "Pedido Concluído": self.create_list_frame("Pedido Concluído"),
+        }
 
-        self.scrollbar_preparo = ttk.Scrollbar(self.frame_list_preparo, orient=tk.VERTICAL)
-        self.scrollbar_preparo.grid(row=1, column=1, sticky="ns")
-        self.listbox_preparo.config(yscrollcommand=self.scrollbar_preparo.set)
-        self.scrollbar_preparo.config(command=self.listbox_preparo.yview)
+        # Configuração do frame para controle de status
+        self.frame_status = ttk.Frame(self.root, padding="10")
+        self.frame_status.pack(fill=tk.X)
+        self.setup_status_controls()
 
-        # Frame para lista de vendas - Em Entrega
-        self.frame_list_entrega = ttk.Frame(root, padding="10")
-        self.frame_list_entrega.grid(row=0, column=1, sticky="nsew")
-
-        self.label_list_entrega = ttk.Label(self.frame_list_entrega, text="Em Entrega", font=('Arial', 14))
-        self.label_list_entrega.grid(row=0, column=0, columnspan=2, pady=5)
-
-        self.listbox_entrega = tk.Listbox(self.frame_list_entrega, width=60, height=20, border=1, selectmode=tk.SINGLE)
-        self.listbox_entrega.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-
-        self.scrollbar_entrega = ttk.Scrollbar(self.frame_list_entrega, orient=tk.VERTICAL)
-        self.scrollbar_entrega.grid(row=1, column=1, sticky="ns")
-        self.listbox_entrega.config(yscrollcommand=self.scrollbar_entrega.set)
-        self.scrollbar_entrega.config(command=self.listbox_entrega.yview)
-
-        # Frame para lista de vendas - Concluído
-        self.frame_list_concluido = ttk.Frame(root, padding="10")
-        self.frame_list_concluido.grid(row=0, column=2, sticky="nsew")
-
-        self.label_list_concluido = ttk.Label(self.frame_list_concluido, text="Pedido Concluído", font=('Arial', 14))
-        self.label_list_concluido.grid(row=0, column=0, columnspan=2, pady=5)
-
-        self.listbox_concluido = tk.Listbox(self.frame_list_concluido, width=60, height=20, border=1, selectmode=tk.SINGLE)
-        self.listbox_concluido.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-
-        self.scrollbar_concluido = ttk.Scrollbar(self.frame_list_concluido, orient=tk.VERTICAL)
-        self.scrollbar_concluido.grid(row=1, column=1, sticky="ns")
-        self.listbox_concluido.config(yscrollcommand=self.scrollbar_concluido.set)
-        self.scrollbar_concluido.config(command=self.listbox_concluido.yview)
-
-        # Frame para alterar o status da venda
-        self.frame_status = ttk.Frame(root, padding="10")
-        self.frame_status.grid(row=1, column=0, columnspan=3, sticky="nsew")
-
-        self.label_status = ttk.Label(self.frame_status, text="Alterar Status da Venda", font=('Arial', 14))
-        self.label_status.grid(row=0, column=0, pady=5)
-
-        self.status_opcoes = ['Em Preparo', 'Em Entrega', 'Pedido Concluído']
-        self.status_combo = ttk.Combobox(self.frame_status, values=self.status_opcoes, state="readonly")
-        self.status_combo.grid(row=1, column=0, padx=5, pady=5)
-
-        self.button_status = ttk.Button(self.frame_status, text="Alterar Status", command=self.alterar_status)
-        self.button_status.grid(row=2, column=0, pady=10)
-
-        # Configurações de redimensionamento
-        self.frame_list_preparo.columnconfigure(0, weight=1)
-        self.frame_list_preparo.rowconfigure(1, weight=1)
-        self.frame_list_entrega.columnconfigure(0, weight=1)
-        self.frame_list_entrega.rowconfigure(1, weight=1)
-        self.frame_list_concluido.columnconfigure(0, weight=1)
-        self.frame_list_concluido.rowconfigure(1, weight=1)
-        self.frame_status.columnconfigure(0, weight=1)
-
-        # Configurar as linhas e colunas da grade para redimensionamento
-        root.grid_rowconfigure(0, weight=1)
-        root.grid_rowconfigure(1, weight=0)
-        root.grid_columnconfigure(0, weight=1)
-        root.grid_columnconfigure(1, weight=1)
-        root.grid_columnconfigure(2, weight=1)
-
-        # Carregar vendas na lista
         self.carregar_vendas()
 
+    def create_list_frame(self, title):
+        frame = ttk.Frame(self.frame_main, padding="10")
+        frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        label = ttk.Label(frame, text=title, font=('Helvetica', 14))
+        label.pack(pady=5)
+
+        listbox = tk.Listbox(frame, width=40, height=20, border=1, selectmode=tk.SINGLE)
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+
+        scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=listbox.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        listbox.config(yscrollcommand=scrollbar.set)
+
+        return {"frame": frame, "listbox": listbox}
+
+    def setup_status_controls(self):
+        label_status = ttk.Label(self.frame_status, text="Alterar Status da Venda", font=('Helvetica', 14))
+        label_status.pack(pady=5)
+
+        self.status_opcoes = ['Em Preparo', 'Em Entrega', 'Pedido Concluído']
+        self.status_combo = ttk.Combobox(self.frame_status, values=self.status_opcoes, state="readonly", font=('Helvetica', 12))
+        self.status_combo.pack(pady=5)
+
+        button_status = ttk.Button(self.frame_status, text="Alterar Status", command=self.alterar_status)
+        button_status.pack(pady=10)
+
     def carregar_vendas(self):
-        conn = sqlite3.connect('C:/Users/ld388/Desktop/management/site/pages/vendas.db')  # Conectar ao banco de dados de vendas
-        c = conn.cursor()
-        c.execute("SELECT id, nome_produto, quantidade, total, status FROM vendas")
-        vendas = c.fetchall()
-        conn.close()
-
         # Limpar todas as listas antes de adicionar os itens
-        self.listbox_preparo.delete(0, tk.END)
-        self.listbox_entrega.delete(0, tk.END)
-        self.listbox_concluido.delete(0, tk.END)
+        for key in self.frames:
+            self.frames[key]["listbox"].delete(0, tk.END)
 
-        # Inserir cada venda na lista correspondente ao seu status
+        # Consultar vendas
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute("SELECT id, nome_produto, quantidade, total, status FROM vendas")
+            vendas = c.fetchall()
+
+        # Distribuir vendas nas listas correspondentes
         for venda in vendas:
-            texto_venda = f"Venda ID: {venda[0]}, Produto: {venda[1]}, Quantidade: {venda[2]}, Total: R${venda[3]:.2f}"
-            if venda[4] == "Em Preparo":
-                self.listbox_preparo.insert(tk.END, texto_venda)
-            elif venda[4] == "Em Entrega":
-                self.listbox_entrega.insert(tk.END, texto_venda)
-            elif venda[4] == "Pedido Concluído":
-                self.listbox_concluido.insert(tk.END, texto_venda)
+            texto_venda = f"ID: {venda[0]} | Produto: {venda[1]} | Qtde: {venda[2]} | Total: R${venda[3]:.2f}"
+            status = venda[4]
+            if status in self.frames:
+                self.frames[status]["listbox"].insert(tk.END, texto_venda)
 
     def alterar_status(self):
-        # Determinar qual lista foi selecionada
-        if self.listbox_preparo.curselection():
-            selecionado = self.listbox_preparo.curselection()
-            status_atual = "Em Preparo"
-        elif self.listbox_entrega.curselection():
-            selecionado = self.listbox_entrega.curselection()
-            status_atual = "Em Entrega"
-        elif self.listbox_concluido.curselection():
-            selecionado = self.listbox_concluido.curselection()
-            status_atual = "Pedido Concluído"
-        else:
+        venda_selecionada = None
+        status_atual = None
+
+        for status, frame_info in self.frames.items():
+            listbox = frame_info["listbox"]
+            if listbox.curselection():
+                venda_selecionada = listbox.get(listbox.curselection()[0])
+                status_atual = status
+                break
+
+        if not venda_selecionada:
             messagebox.showerror("Erro", "Selecione uma venda para alterar o status")
             return
 
-        venda_info = self.get_venda_info(status_atual, selecionado)
-        venda_id = venda_info.split(",")[0].split(": ")[1]
+        venda_id = int(venda_selecionada.split("|")[0].split(":")[1].strip())
         novo_status = self.status_combo.get()
 
         if not novo_status:
             messagebox.showerror("Erro", "Selecione um status para alterar")
             return
 
-        conn = sqlite3.connect('C:/Users/ld388/Desktop/management/site/pages/vendas.db')
-        c = conn.cursor()
-        c.execute("UPDATE vendas SET status = ? WHERE id = ?", (novo_status, venda_id))
-        conn.commit()
-        conn.close()
+        # Atualizar status no banco de dados
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute("UPDATE vendas SET status = ? WHERE id = ?", (novo_status, venda_id))
+            conn.commit()
 
         messagebox.showinfo("Sucesso", "Status da venda alterado com sucesso!")
         self.carregar_vendas()
-
-    def get_venda_info(self, status_atual, selecionado):
-        if status_atual == "Em Preparo":
-            return self.listbox_preparo.get(selecionado[0])
-        elif status_atual == "Em Entrega":
-            return self.listbox_entrega.get(selecionado[0])
-        elif status_atual == "Pedido Concluído":
-            return self.listbox_concluido.get(selecionado[0])
 
 if __name__ == "__main__":
     root = tk.Tk()

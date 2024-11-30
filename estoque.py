@@ -6,110 +6,95 @@ class EstoqueApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Gerenciar Estoque")
-        self.root.geometry("1400x700")
-        
-        # Estilo
+        self.root.geometry("1366x768")
+        self.root.configure(bg="#f0f4f7")
+
+        # Configuração de estilo
         style = ttk.Style()
-        style.configure('TLabel', font=('Arial', 12))
-        style.configure('TButton', font=('Arial', 12))
-        style.configure('TEntry', font=('Arial', 12))
+        style.theme_use("clam")
+        style.configure('TFrame', background="#f0f4f7")
+        style.configure('TLabel', background="#f0f4f7", font=('Arial', 12))
+        style.configure('TButton', font=('Arial', 12), padding=6)
+        style.configure('TEntry', font=('Arial', 12), padding=5)
+        style.configure('Header.TLabel', font=('Arial', 14, 'bold'), background="#f0f4f7")
+        style.map('TButton', background=[('!disabled', '#0078d4')], foreground=[('!disabled', 'white')])
 
-        # Frame para lista de produtos
+        # Layout principal (dividido em duas colunas)
         self.frame_list = ttk.Frame(root, padding="10")
-        self.frame_list.grid(row=0, column=0, sticky="nsew")
+        self.frame_list.grid(row=0, column=0, sticky="nsw", padx=10, pady=10)
 
-        self.label_list = ttk.Label(self.frame_list, text="Lista de Produtos", font=('Arial', 14))
-        self.label_list.grid(row=0, column=0, columnspan=2, pady=5)
+        self.frame_edit = ttk.Frame(root, padding="10")
+        self.frame_edit.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
-        self.listbox_produtos = tk.Listbox(self.frame_list, width=60, height=20, border=1, selectmode=tk.SINGLE)
-        self.listbox_produtos.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+        root.columnconfigure(1, weight=1)
+        root.rowconfigure(0, weight=1)
+
+        # === Frame Lista de Produtos ===
+        self.label_list = ttk.Label(self.frame_list, text="Lista de Produtos", style='Header.TLabel')
+        self.label_list.grid(row=0, column=0, pady=10)
+
+        self.listbox_produtos = tk.Listbox(self.frame_list, width=40, height=20, font=('Arial', 12), bg="white", bd=1, selectmode=tk.SINGLE, highlightthickness=1, relief="solid")
+        self.listbox_produtos.grid(row=1, column=0, padx=5, pady=5)
 
         self.scrollbar = ttk.Scrollbar(self.frame_list, orient=tk.VERTICAL)
         self.scrollbar.grid(row=1, column=1, sticky="ns")
         self.listbox_produtos.config(yscrollcommand=self.scrollbar.set)
         self.scrollbar.config(command=self.listbox_produtos.yview)
 
+        # Botões da lista
         self.button_view = ttk.Button(self.frame_list, text="Visualizar Detalhes", command=self.visualizar_detalhes)
         self.button_view.grid(row=2, column=0, pady=10, sticky="ew")
 
         self.button_delete = ttk.Button(self.frame_list, text="Excluir Produto", command=self.excluir_produto)
         self.button_delete.grid(row=3, column=0, pady=10, sticky="ew")
 
-        self.button_add_stock = ttk.Button(self.frame_list, text="Adicionar Mais Estoque", command=self.adicionar_estoque)
+        self.button_add_stock = ttk.Button(self.frame_list, text="Adicionar Estoque", command=self.adicionar_estoque)
         self.button_add_stock.grid(row=4, column=0, pady=10, sticky="ew")
 
-        self.button_baixo_estoque = ttk.Button(self.frame_list, text="Produtos Abaixo do Estoque Mínimo", command=self.produtos_abaixo_estoque_minimo)
+        self.button_baixo_estoque = ttk.Button(self.frame_list, text="Produtos Abaixo do Estoque", command=self.produtos_abaixo_estoque_minimo)
         self.button_baixo_estoque.grid(row=5, column=0, pady=10, sticky="ew")
 
-        # Frame para adicionar e editar produtos
-        self.frame_edit = ttk.Frame(root, padding="10")
-        self.frame_edit.grid(row=0, column=1, sticky="nsew")
+        # === Frame Adicionar/Editar Produtos ===
+        self.label_edit = ttk.Label(self.frame_edit, text="Editar Produto", style='Header.TLabel')
+        self.label_edit.grid(row=0, column=0, columnspan=2, pady=10)
 
-        self.label_id = ttk.Label(self.frame_edit, text="ID do Produto")
-        self.label_id.grid(row=0, column=0, sticky="e")
-        self.entry_id = ttk.Entry(self.frame_edit, width=30)
-        self.entry_id.grid(row=0, column=1, padx=5, pady=5)
+        campos = [
+            ("ID do Produto", "entry_id"),
+            ("Nome", "entry_nome"),
+            ("Preço de Compra", "entry_preco_compra"),
+            ("Preço de Venda", "entry_preco_venda"),
+            ("Quantidade", "entry_quantidade"),
+            ("Fornecedor", "entry_fornecedor"),
+            ("Estoque Mínimo", "entry_estoque_minimo")
+        ]
+        self.entries = {}
+        for i, (label_text, entry_name) in enumerate(campos):
+            label = ttk.Label(self.frame_edit, text=label_text)
+            label.grid(row=i + 1, column=0, sticky="e", pady=5)
+            entry = ttk.Entry(self.frame_edit, width=30)
+            entry.grid(row=i + 1, column=1, padx=5, pady=5, sticky="ew")
+            self.entries[entry_name] = entry
 
-        self.label_nome = ttk.Label(self.frame_edit, text="Nome")
-        self.label_nome.grid(row=1, column=0, sticky="e")
-        self.entry_nome = ttk.Entry(self.frame_edit, width=30)
-        self.entry_nome.grid(row=1, column=1, padx=5, pady=5)
+        # Botões do frame de edição
+        self.button_save = ttk.Button(self.frame_edit, text="Salvar Produto", command=self.salvar_produto)
+        self.button_save.grid(row=8, column=0, columnspan=2, pady=10, sticky="ew")
 
-        self.label_preco_compra = ttk.Label(self.frame_edit, text="Preço de Compra")
-        self.label_preco_compra.grid(row=2, column=0, sticky="e")
-        self.entry_preco_compra = ttk.Entry(self.frame_edit, width=30)
-        self.entry_preco_compra.grid(row=2, column=1, padx=5, pady=5)
+        self.button_add = ttk.Button(self.frame_edit, text="Adicionar Novo Produto", command=self.adicionar_produto)
+        self.button_add.grid(row=9, column=0, columnspan=2, pady=10, sticky="ew")
 
-        self.label_preco_venda = ttk.Label(self.frame_edit, text="Preço de Venda")
-        self.label_preco_venda.grid(row=3, column=0, sticky="e")
-        self.entry_preco_venda = ttk.Entry(self.frame_edit, width=30)
-        self.entry_preco_venda.grid(row=3, column=1, padx=5, pady=5)
-
-        self.label_quantidade = ttk.Label(self.frame_edit, text="Quantidade")
-        self.label_quantidade.grid(row=4, column=0, sticky="e")
-        self.entry_quantidade = ttk.Entry(self.frame_edit, width=30)
-        self.entry_quantidade.grid(row=4, column=1, padx=5, pady=5)
-
-        self.label_fornecedor = ttk.Label(self.frame_edit, text="Fornecedor")
-        self.label_fornecedor.grid(row=5, column=0, sticky="e")
-        self.entry_fornecedor = ttk.Entry(self.frame_edit, width=30)
-        self.entry_fornecedor.grid(row=5, column=1, padx=5, pady=5)
-
-        self.label_estoque_minimo = ttk.Label(self.frame_edit, text="Estoque Mínimo")
-        self.label_estoque_minimo.grid(row=6, column=0, sticky="e")
-        self.entry_estoque_minimo = ttk.Entry(self.frame_edit, width=30)
-        self.entry_estoque_minimo.grid(row=6, column=1, padx=5, pady=5)
-
-        self.button_save = ttk.Button(self.frame_edit, text="Salvar", command=self.salvar_produto)
-        self.button_save.grid(row=7, column=0, columnspan=2, pady=10, sticky="ew")
-
-        self.button_add = ttk.Button(self.frame_edit, text="Adicionar Novo", command=self.adicionar_produto)
-        self.button_add.grid(row=8, column=0, columnspan=2, pady=10, sticky="ew")
-
-        # Configurações de redimensionamento
-        self.frame_list.columnconfigure(0, weight=1)
-        self.frame_list.rowconfigure(1, weight=1)
-        self.frame_edit.columnconfigure(1, weight=1)
-        root.columnconfigure(0, weight=1)
-        root.columnconfigure(1, weight=2)
-        root.rowconfigure(0, weight=1)
-
-        # Carregar produtos na lista
+        # Configurações adicionais
         self.carregar_produtos()
 
     def carregar_produtos(self):
         conn = sqlite3.connect('estoque.db')
         c = conn.cursor()
-        c.execute("SELECT id, nome, quantidade, estoque_minimo FROM produtos")
+        c.execute("SELECT id, nome FROM produtos")
         produtos = c.fetchall()
         conn.close()
 
         self.listbox_produtos.delete(0, tk.END)
         for produto in produtos:
             self.listbox_produtos.insert(tk.END, f"{produto[0]} - {produto[1]}")
-            if produto[2] < produto[3]:  # Verifica se a quantidade está abaixo do estoque mínimo
-                messagebox.showwarning("Alerta de Estoque", f"O produto '{produto[1]}' atingiu o estoque mínimo.")
-
     def visualizar_detalhes(self):
         selecionado = self.listbox_produtos.curselection()
         if not selecionado:
